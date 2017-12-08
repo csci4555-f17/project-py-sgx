@@ -76,11 +76,6 @@ class _ProgramCompiler:
         _end_bm("desugaring")
         _dbg("Desugared AST:", self.desugared_ast)
 
-        _start_bm("explicating")
-        self.explicated_ast = explicate(self.desugared_ast)
-        _end_bm("explicating")
-        _dbg("Explicated AST:", self.explicated_ast)
-
         _start_bm("flattening")
         self.flat_ast = flatten(self.explicated_ast)
         _end_bm("flattening")
