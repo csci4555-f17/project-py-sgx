@@ -28,3 +28,16 @@ $ cat mytests/test1.in | mytests/test1 > mytests/test1.out
 For your convenience, the `Makefile` has targets for these steps that you may use, modify, or ignore as you like.
 
 Your compiler needs to produce code that runs on an x86 Linux machine.
+
+Architecture:
+
+Parse  
+De-Sugar
+Explicate
+Flatten
+Select Instructions
+Allocate Regs
+Update Padding
+Remove Nops
+Remove Structured Control Flow
+Print x86

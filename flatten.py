@@ -1,38 +1,6 @@
-from compiler.ast import *
+from explicate_ast import *
 from typing import *
-
-
-class VariableAllocator:
-	"""
-	A namespace to unify all actions and variables
-	"""
-	__temp_vars = 0
-	__freed = []
-
-	class InternalName(Name):
-		"""
-		Behaves exactly like Name, but allows distinction between temp vars
-		allocated internally by the flattener and those allocated explicitly by
-		the program, so we only free locally allocated vars
-		"""
-		pass
-
-	@staticmethod
-	def allocate():
-		# type: () -> Name
-		try:
-			return VariableAllocator.__freed.pop()
-		except IndexError:
-			VariableAllocator.__temp_vars += 1
-			# Hash (#) added so no conflicts can arise with program names
-			return VariableAllocator.InternalName("#PYYC_FLATTEN_TEMP_" + str(VariableAllocator.__temp_vars))
-
-	@staticmethod
-	def free(name):
-		return
-		# type: (Node) -> ()
-		if isinstance(name, VariableAllocator.InternalName):
-			VariableAllocator.__freed.append(name)
+from allocator import *
 
 
 def _assignment(name, expr):
@@ -76,26 +44,46 @@ def _flatten_stmt(stmt):
 	"""
 	if isinstance(stmt, Printnl):
 		flattened, nodes = _flatten_and_sequence(stmt.nodes)
-		map(VariableAllocator.free, nodes)
 		return flattened + [Printnl(nodes, stmt.dest)]
 
 	elif isinstance(stmt, Assign):
 		for node in stmt.nodes:
-			if not isinstance(node, AssName):
-				raise TypeError("Cannot assign value to non-name Node.")
+			if not isinstance(node, Name):
+				raise TypeError("Cannot assign value to non-name Node.", node)
 		# Flatten the expr, then bind it to a temp name once so it is not
 		# run again for each binding.
 		flattened, expr_name = _flatten_expr(stmt.expr, True)
 		# Bind to the temp name
-		VariableAllocator.free(expr_name)
 		return flattened + [_assignment(node.name, expr_name) for node in stmt.nodes]
 
 	elif isinstance(stmt, Discard):
 		flattened, _ = _flatten_expr(stmt.expr, False)
 		return flattened
 
+	elif isinstance(stmt, IfStmt):
+		flattened_test, test_name = _flatten_expr(stmt.test, True)
+		return flattened_test + [
+			IfStmt(
+				test_name,
+				Stmt(_flatten_stmts(stmt.then_.nodes)),
+				Stmt(_flatten_stmts(stmt.else_.nodes))
+			)
+		]
+
+	elif isinstance(stmt, If):
+		raise TypeError("If class should be removed by explicate", stmt)
+
 	else:
 		raise TypeError("Inexhaustive pattern match.", stmt)
+
+
+def _flatten_stmts(stmts):
+	# type: ([Node]) -> [Node]
+	stmts_acc = []
+	for stmt in stmts:
+		flattened = _flatten_stmt(stmt)
+		stmts_acc += flattened
+	return stmts_acc
 
 
 def _flatten_expr(expr, save):
@@ -111,10 +99,10 @@ def _flatten_expr(expr, save):
 	:return: The list of operations that are equivalent to the given ast
 	"""
 
-	def do_save(flattened, res, name = None):
+	def do_save(flattened, res, name=None):
 		if save:
 			if name is None:
-				name = VariableAllocator.allocate()
+				name = allocate()
 			return flattened + [_assignment(name.name, res)], name
 		else:
 			return flattened + [Discard(res)], None
@@ -124,19 +112,15 @@ def _flatten_expr(expr, save):
 
 		# this temp Var is so that the add maps more closely to the x86 addl
 		# instruction. Specifically, this ensures that it has the form `x = ? + x`
-		name = VariableAllocator.allocate()
+		name = allocate()
 		flattened += [_assignment(name.name, right_name)]
 
 		res = Add((left_name, name))
-		VariableAllocator.free(left_name)
-		VariableAllocator.free(right_name)
-		VariableAllocator.free(name)
 		return do_save(flattened, res, name)
 
 	elif isinstance(expr, UnarySub):
 		flattened, [name] = _flatten_and_sequence([expr.expr])
 		res = UnarySub(name)
-		VariableAllocator.free(name)
 		return do_save(flattened, res)
 
 	elif isinstance(expr, CallFunc):
@@ -147,7 +131,57 @@ def _flatten_expr(expr, save):
 		# type: List[Node]
 		flattened = flattened_func + flattened_arg_ops
 		res = CallFunc(func_name, args)
-		map(VariableAllocator.free, args)
+		return do_save(flattened, res)
+
+	elif isinstance(expr, Bop):
+		flattened, [left_name, right_name] = _flatten_and_sequence([expr.left, expr.right])
+
+		# this temp Var is so that the add maps more closely to the x86 addl
+		# instruction. Specifically, this ensures that it has the form `x = ? + x`
+		name = allocate()
+		flattened += [_assignment(name.name, right_name)]
+
+		# Special Bop for internal use only
+		if isinstance(expr, Seq):
+			res = name
+		else:
+			res = expr.__class__((left_name, name))
+		return do_save(flattened, res, name)
+
+	elif isinstance(expr, IfExp):
+		flattened_test, [test_name] = _flatten_and_sequence([expr.test])
+		flattened_then_, [then_name] = _flatten_and_sequence([expr.then])
+		flattened_else_, [else_name] = _flatten_and_sequence([expr.else_])
+
+		name = allocate()
+		# Assign the result in the left and right to `name`
+		flattened = flattened_test + [IfStmt(
+			test_name,
+			Stmt(flattened_then_ + [_assignment(name.name, then_name)]),
+			Stmt(flattened_else_ + [_assignment(name.name, else_name)])
+		)]
+		return flattened, name
+
+	elif isinstance(expr, Let):
+		flattened_rhs, rhs_name = _flatten_expr(expr.rhs, True)
+		flattened = flattened_rhs + [_assignment(expr.var, rhs_name)]
+		flattened_body, body_name = _flatten_expr(expr.body, True)
+		flattened += flattened_body
+		return flattened, body_name
+
+	elif isinstance(expr, GetTag):
+		flattened, name = _flatten_expr(expr.arg, True)
+		res = GetTag(name)
+		return do_save(flattened, res)
+
+	elif isinstance(expr, Box):
+		flattened, name = _flatten_expr(expr.arg, True)
+		res = Box(expr.type, name)
+		return do_save(flattened, res)
+
+	elif isinstance(expr, UnBox):
+		flattened, name = _flatten_expr(expr.arg, True)
+		res = UnBox(expr.type, name)
 		return do_save(flattened, res)
 
 	# Base cases
@@ -165,11 +199,6 @@ def flatten(ast):
 
 	if not isinstance(ast, Module) or not isinstance(ast.node, Stmt):
 		raise TypeError("Could not flatten improperly formatted AST (expected "
-						"top level structure to match Module(Stmt([...]))")
+						"top level structure to match Module(Stmt([...]))", ast)
 
-	ast_acc = []
-	for node in ast.node.nodes:
-		flattened = _flatten_stmt(node)
-		ast_acc = ast_acc + flattened
-
-	return Module(ast.doc, Stmt(ast_acc))
+	return Module(ast.doc, Stmt(_flatten_stmts(ast.node.nodes)))

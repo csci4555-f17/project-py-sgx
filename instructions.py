@@ -1,5 +1,6 @@
 import compiler
 from abi import abi
+from allocator import allocate
 
 caller_save_regs = {
 	"%eax",
@@ -55,7 +56,7 @@ class x86instruction(object):
 		for i in range(len(self.vars)):
 			if isinstance(self.vars[i], compiler.ast.Const):
 				self.var_locations.append("$" + str(self.vars[i].value))
-			elif isinstance(self.vars[i], compiler.ast.AssName) or isinstance(self.vars[i], compiler.ast.Name):
+			elif isinstance(self.vars[i], compiler.ast.Name):
 				self.var_locations.append(all_locations[self.vars[i].name])
 			else:
 				self.var_locations.append(self.vars[i])
@@ -72,7 +73,7 @@ class x86instruction(object):
 		curr_i = 0
 		for var in self.vars:
 			curr_elem = None
-			if isinstance(var, compiler.ast.AssName) or isinstance(var, compiler.ast.Name):
+			if isinstance(var, compiler.ast.Name):
 				curr_elem = var.name
 			elif isinstance(var, str):
 				curr_elem = var
@@ -97,6 +98,12 @@ class x86instruction(object):
 			return False
 		return (self.var_locations[0].endswith("p)") or self.var_locations[0].endswith("p")) and\
 			   (self.var_locations[1].endswith("p)") or self.var_locations[1].endswith("p"))
+
+	def vars_written(self):
+		return []
+
+	def vars_read(self):
+		return []
 
 class movl(x86instruction):
 	def __init__(self, left_var, right_var):
@@ -205,3 +212,146 @@ class unpad_args(x86instruction):
 
 	def vars_read(self):
 		return self.vars_names()
+
+class if_instr(x86instruction):
+	def __init__(self, test_, then_, else_):
+		# type (Name, [x86instruction], [x86instruction])
+		super(if_instr, self).__init__()
+		self.instr = "if"
+		self.vars = [test_]
+		self.then_ = then_
+		self.else_ = else_
+		self.affected_registers = ["%eax", "%ecx"]  # al, cl
+
+	def assign_locations(self, all_locations):
+		# type: (dict) -> ()
+		super(if_instr, self).assign_locations(all_locations)
+		for instr in self.then_:
+			instr.assign_locations(all_locations)
+		for instr in self.else_:
+			instr.assign_locations(all_locations)
+
+	def get_x86(self):
+		# type () -> str
+		else_label = "label_" + allocate().name[1:] # yolo
+		end_label = "label_" + allocate().name[1:]
+		x86str = "cmpl $0, " + self.var_locations[0] + "\n"
+		x86str += "je " + else_label + "\n"
+		for instr in self.then_:
+			x86str += instr.get_x86() + "\n"
+		x86str += "jmp " + end_label + "\n"
+		x86str += else_label + ":\n"
+		for instr in self.else_:
+			x86str += instr.get_x86() + "\n"
+		x86str += end_label + ":\n"
+		return x86str
+
+	def vars_written(self):
+		return self.affected_registers
+
+	def vars_read(self):
+		return self.vars_names()
+
+	def __str__(self):
+		res = super(if_instr, self).__str__() + "\n"
+		res += "| then\n"
+		for instr in self.then_:
+			res += "|-" + instr.__str__() + "\n"
+		res += "| else\n"
+		for instr in self.else_:
+			res += "|-" + instr.__str__() + "\n"
+		res += "|----------" + super(if_instr, self).__str__() + "----------|"
+		return res
+
+class cmpl(x86instruction):
+	def __init__(self, left, right):
+		# type (Bop)
+		super(cmpl, self).__init__()
+		self.instr = "cmpl"
+		self.vars = [left, right]
+
+	def vars_written(self):
+		return []
+
+	def vars_read(self):
+		return self.vars_names()
+
+class sall(x86instruction):
+	def __init__(self, shift, var):
+		# shift has to be const
+		super(sall, self).__init__()
+		self.instr = "sall"
+		self.vars = [shift, var]
+
+	def vars_written(self):
+		return self.vars_names()
+
+	def vars_read(self):
+		return self.vars_names()
+
+class orl(x86instruction):
+	def __init__(self, left, right):
+		super(orl, self).__init__()
+		self.instr = "orl"
+		self.vars = [left, right]
+
+	def vars_written(self):
+		return self.vars_names(1)
+
+	def vars_read(self):
+		return self.vars_names()
+
+class andl(x86instruction):
+	def __init__(self, left, right):
+		super(andl, self).__init__()
+		self.instr = "andl"
+		self.vars = [left, right]
+
+	def vars_written(self):
+		return self.vars_names(1)
+
+	def vars_read(self):
+		return self.vars_names()
+
+class sarl(x86instruction):
+	def __init__(self, shift, var):
+		# shift has to be const
+		super(sarl, self).__init__()
+		self.instr = "sarl"
+		self.vars = [shift, var]
+
+	def vars_written(self):
+		return self.vars_names()
+
+	def vars_read(self):
+		return self.vars_names()
+
+class sete_cl(x86instruction):
+	def __init__(self):
+		super(sete_cl, self).__init__()
+		self.instr = "sete %cl"
+		self.affected_registers = ["%ecx"]  # cl
+
+	def vars_written(self):
+		return self.affected_registers
+
+class setne_cl(x86instruction):
+	def __init__(self):
+		super(setne_cl, self).__init__()
+		self.instr = "setne %cl"
+		self.affected_registers = ["%ecx"]  # cl
+
+	def vars_written(self):
+		return self.affected_registers
+
+class movzbl_cl(x86instruction):
+	def __init__(self, var):
+		super(movzbl_cl, self).__init__()
+		self.instr = "movzbl %cl,"
+		self.vars = [var]
+
+	def vars_written(self):
+		return self.vars_names()
+
+	def vars_read(self):
+		return []

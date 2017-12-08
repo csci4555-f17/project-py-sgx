@@ -143,9 +143,8 @@ class TestCompiler(object):
 
 
 def main():
-
 	test_dir = "./tests/"
-	for test_filename in os.listdir(test_dir):
+	for test_filename in sorted(os.listdir(test_dir)):
 		if test_filename.endswith(".py"):
 			try:
 				with open(test_dir + test_filename, 'r') as test_file:
@@ -162,7 +161,7 @@ def main():
 				pass
 
 			TestCompiler(input_code=input_code, subprocess_stdin=subprocess_stdin, test_name=test_filename).Run()
-
+	return
 	# still could run tests like this:
 	TestCompiler(input_code="xw=-input()\nyw=-input()\nprint yw+2+0+3+2+xw",
 				 subprocess_stdin=["1232", "-909"], test_name="My Test").Run()

@@ -1,3 +1,6 @@
+from priority_queue import PriorityQueue
+
+
 class Uncolorable(RuntimeError):
     def __init__(self, data, *args):
         super(Uncolorable, self).__init__("Node %s could not be colored." % data, *args)
@@ -17,7 +20,7 @@ class Graph:
         if data not in self.nodes:
             self.nodes[data] = Node(data)
         if color_first:
-            self.nodes[data].priority = 2
+            self.nodes[data].priority = 1
 
     def remove(self, data):
         if data in self.nodes:
@@ -34,52 +37,54 @@ class Graph:
         self.nodes[data].clearable = False
         self.nodes[data].color = color
 
-    def add_edge(self, *datas):
+    def add_edge(self, data1, data2):
         """Creates a undirected edge between nodes associated with each element in datas
         """
 
         # remove duplicates (so we don't have loops, rendering the graph uncolorable)
-        datas = set(datas)
+        if data1 == data2:
+            return
 
-        for missing_data in datas - set(self.nodes):
-            self.insert(missing_data)
-        else:
-            # Add each node associated with each data element given to each others
-            # set of neighbors
-            for data in datas:
-                self.nodes[data].neighbors |= set(map(lambda d: self.nodes[d], datas - {data}))
+        self.insert(data1)
+        self.insert(data2)
+        self.nodes[data1].neighbors.add(self.nodes[data2])
+        self.nodes[data2].neighbors.add(self.nodes[data1])
 
-    def remove_colors(self):
-        for node in self.nodes.values():
-            if node.clearable:
-                node.color = None
-
-    def color(self, colors):
+    def color(self, colors, generate_color=None):
         # type: (list) -> ()
 
         def saturation(node):
             # type: (Node) -> int
-            seen_colors = set()
-            sat = 0
             for neighbor in node.neighbors:
-                if neighbor.color not in seen_colors:
-                    sat += 1
-                    seen_colors.add(neighbor.color)
-            return sat
+                node.neighbor_colors.add(neighbor.color)
+            return len(node.neighbor_colors)
 
         def priority(node):
+            # TODO: Figure out why on earth negating saturation takes longer
             return node.priority, saturation(node)
 
-        w = set(node for node in self.nodes.values() if node.color is None)
+        w = PriorityQueue(priority)
+        for node in self.nodes.values():
+            node.neighbor_colors = set()
+            if node.color is None:
+                w.insert(node)
         while w:
-            u = max(w, key=priority)
-            adj_colors = map(lambda n: n.color, u.neighbors)
+            u = w.pop()
             try:
-                u.color = next(c for c in colors if c not in adj_colors)
+                u.color = next(c for c in colors if c not in u.neighbor_colors)
+                for neighbor in u.neighbors:
+                    if neighbor.color is None:
+                        neighbor.neighbor_colors.add(u.color)
+                        # TODO: Figure out why on earth negating saturation takes longer
+                        w.insert(neighbor, (neighbor.priority, len(neighbor.neighbor_colors)))
             except StopIteration:
                 # Happens if all colors are taken
-                raise Uncolorable(u.data)
-            w -= {u}
+                if generate_color is not None:
+                    colors.append(generate_color())
+                    w.insert(u)
+                    continue
+                else:
+                    raise Uncolorable(u.data)
 
     def color_of(self, data):
         return self.nodes[data].color
@@ -98,13 +103,16 @@ class Node:
         self.color = None
         self.neighbors = set()
         self.clearable = True
-        self.priority = 1
+        self.priority = 2
 
     def __eq__(self, other):
         return hash(self) == hash(other)
 
     def __str__(self):
         return "(d=%s, c=%s)" % (self.data, self.color)
+
+    def __repr__(self):
+        return str(self)
 
     # Needed for `node in nodes` notation
     def __hash__(self):
