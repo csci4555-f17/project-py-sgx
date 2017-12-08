@@ -1,0 +1,5 @@
+#!/usr/bin/env fish
+
+trash ../zipped_submissions/pyyc-sergey-albert-lab-4.zip
+trash runtime/*.o
+zip -r ../zipped_submissions/pyyc-sergey-albert-lab-4 .
