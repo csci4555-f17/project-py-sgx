@@ -4,7 +4,6 @@ from libs.termcolor import colored
 
 from compiler.ast import Module, Name, Const
 from flatten import flatten
-from explicate import explicate
 from explicate_ast import IfStmt, Eq, NEq, Is, Box, UnBox, GetTag
 from desugar import desugar
 from abi import set_abi
@@ -77,7 +76,7 @@ class _ProgramCompiler:
         _dbg("Desugared AST:", self.desugared_ast)
 
         _start_bm("flattening")
-        self.flat_ast = flatten(self.explicated_ast)
+        self.flat_ast = flatten(self.desugared_ast)
         _end_bm("flattening")
         _dbg("Flattened AST:", self.flat_ast)
 
