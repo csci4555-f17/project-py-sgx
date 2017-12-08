@@ -175,7 +175,7 @@ class _ProgramCompiler:
                     pad_instr = pad_args(4)
                     x86IR.append(pad_instr)
                     x86IR.append(pushl(node))
-                    x86IR.append(call("print_any"))
+                    x86IR.append(call("print_int_nl"))
                     x86IR.append(addl(Const(4), "%esp"))
                     x86IR.append(unpad_args(pad_instr))
                 elif isinstance(stmt, compiler.ast.Assign):
