@@ -1,0 +1,7 @@
+*.pyc
+*.pyo
+*.o
+*.a
+*.s
+*.warn
+*.out
