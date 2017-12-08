@@ -23,22 +23,23 @@ def _explicate_stmts(stmts):
         # type: (Node) -> Node
 
         if isinstance(stmt, IfStmt):
-            test = _explicate_expr(stmt.test)
-            then_ = _explicate_stmts(stmt.then_)
-            else_ = _explicate_stmts(stmt.else_)
-            test_name = allocate()
-            return Let(
-                test_name.name,
-                test,
-                IfExp(
+            test_prime = _explicate_expr(stmt.test)
+            then_prime = map(_explicate_stmt, stmt.then_)
+            else_prime = map(_explicate_stmt, stmt.else_)
+            test_name_str = allocate("EXPLICATE_IFSTMT_TEST")
+            test_name = Name(test_name_str)
+            return IfStmt(
+                Let(
+                    test_name_str,
+                    test_prime,
                     IfExp(
                         _int_or_bool(test_name),
                         UnBox("small", test_name),
-                        CallFunc("is_true", [test_name])
+                        UnBox("small", _explicate_expr(CallRuntime(Runtime.is_true, [test_name])))
                     ),
-                    then_,
-                    else_
-                )
+                ),
+                then_prime,
+                else_prime
             )
 
         elif isinstance(stmt, Assign):
