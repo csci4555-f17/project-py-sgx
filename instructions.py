@@ -2,14 +2,14 @@ import compiler
 from abi import abi
 from allocator import allocate
 
+ZIGZAG = True
+
 caller_save_regs = {
 	"%eax",
-	"%ecx",
 	"%edx"
 }
 
 callee_save_regs = {
-	"%ebx",
 	"%edi",
 	"%esi"
 }
@@ -233,17 +233,49 @@ class if_instr(x86instruction):
 
 	def get_x86(self):
 		# type () -> str
-		else_label = "label_" + allocate().name[1:] # yolo
-		end_label = "label_" + allocate().name[1:]
-		x86str = "cmpl $0, " + self.var_locations[0] + "\n"
-		x86str += "je " + else_label + "\n"
-		for instr in self.then_:
-			x86str += instr.get_x86() + "\n"
-		x86str += "jmp " + end_label + "\n"
-		x86str += else_label + ":\n"
-		for instr in self.else_:
-			x86str += instr.get_x86() + "\n"
-		x86str += end_label + ":\n"
+		lname = allocate().name[10:]
+		else_label = "elselabel_" + lname
+		end_label = "endlabel_" + lname
+		if ZIGZAG:
+			start_label = "start_" + lname
+			startj_label = start_label + ".j"
+			then_label = "thenlabel_" + lname
+			thenj_label = then_label + ".j"
+			trampoline_to_thenj = "zz" + lname + "_thenj"
+			trampoline_to_ebx = "zz" + lname + "_ebx"
+
+			x86str = "# trampoline " + lname + "\n"
+			x86str += "jmp " + start_label + "\n" # change from original zigzagger
+			x86str += trampoline_to_thenj + ": jmp " + thenj_label + "\n"
+			x86str += trampoline_to_ebx + ": jmp *%ebx\n"
+			# TODO: cmpl, movl etc from zigzagging should be stored rather than
+			# just added to x86 string to be able to reason about it for const-time compilation
+			x86str += start_label + ":\n"
+			x86str += "movl $" + then_label + ", %ebx\n"
+			x86str += "movl $" + else_label + ", %ecx\n"
+			x86str += "cmp $0, " + self.var_locations[0] + "\n"
+			#x86str += "cmove $" + else_label + ", %ebx\n"
+			x86str += "cmove %ecx, %ebx\n"
+			x86str += startj_label + ":\njmp " + trampoline_to_thenj + "\n"
+			x86str += then_label + ":\n"
+			for instr in self.then_:
+				x86str += instr.get_x86() + "\n"
+			x86str += "movl $" + end_label + ", %ebx\n"
+			x86str += thenj_label + ":\njmp " + trampoline_to_ebx + "\n"
+			x86str += else_label + ":\n"
+			for instr in self.else_:
+				x86str += instr.get_x86() + "\n"
+			x86str += end_label + ":\n"
+		else:
+			x86str = "cmpl $0, " + self.var_locations[0] + "\n"
+			x86str += "je " + else_label + "\n"
+			for instr in self.then_:
+				x86str += instr.get_x86() + "\n"
+			x86str += "jmp " + end_label + "\n"
+			x86str += else_label + ":\n"
+			for instr in self.else_:
+				x86str += instr.get_x86() + "\n"
+			x86str += end_label + ":\n"
 		return x86str
 
 	def vars_written(self):
