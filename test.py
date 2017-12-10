@@ -1,21 +1,15 @@
-l = [1]
+# if 1:
+#     x = 1
+# else:
+#     x = 2
 
-class G:
-    l = [4]
-
-print l
-print G.l
-
-
-def a():
-    return 5
-
-class C:
-    1
-
-class B(C):
-    def __init__(self, arg):
-        self.x = arg
-    y = 1
-
-print a() + B(1).x
+testg = 0
+varg = 3
+if testg:
+    var1 = 3
+    if testg:
+        varg = var1
+    else:
+        var1 = varg
+else:
+    testg = varg
