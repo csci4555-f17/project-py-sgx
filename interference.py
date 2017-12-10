@@ -31,6 +31,12 @@ def interference(instructions, g=None):
         elif isinstance(i, movl):
             [s, t] = i.vars
             add_edges(t, lambda v: not isinstance(s, Name) or v != s.name)
+        elif isinstance(i, cmove):
+            [s, t] = i.vars
+            add_edges(t, lambda v: not isinstance(s, Name) or v != s.name)
+        elif isinstance(i, cmovne):
+            [s, t] = i.vars
+            add_edges(t, lambda v: not isinstance(s, Name) or v != s.name)
         elif isinstance(i, movzbl_cl):
             [t] = i.vars
             add_edges(t)
