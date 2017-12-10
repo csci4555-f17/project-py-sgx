@@ -31,5 +31,10 @@ def if_to_cmov(instr, outer_test = None):
             res.append(movl("%ecx", Name(old)))
         return res
 
+    elif isinstance(instr, while_instr):
+        instr.test_instrs = flat_map(if_to_cmov, instr.test_instrs)
+        instr.body = flat_map(if_to_cmov, instr.body)
+        return [instr]
+
     else:
         return [instr]
