@@ -5,6 +5,12 @@
 #include "hashtable_itr.h"
 #include "hashtable_utility.h"
 
+/* NEW STUFF */
+void _nanotime_begin();
+void _print_nanotime_diff();
+void _rand_seed_time();
+int _rand_zero_or_one();
+
 /* for old times sake */
 void print_int_nl(int x);
 int input();
