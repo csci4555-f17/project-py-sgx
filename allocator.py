@@ -21,7 +21,7 @@ def allocate():
     except IndexError:
         __temp_vars += 1
         # Hash (#) added so no conflicts can arise with program names
-        return InternalName("#PYYC_TEMP_" + str(__temp_vars))
+        return InternalName("PYYC_TEMP_" + str(__temp_vars))
 
 
 def free(name):

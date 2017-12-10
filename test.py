@@ -18,3 +18,12 @@
 # print testg
 # print varg
 # print var1
+x = 10
+while x:
+    print x
+    x = x + -1
+    y = 2
+    if not (x + -4):
+        print x
+    else:
+        print 987
