@@ -29,6 +29,14 @@ def _desugar_stmts(stmts):
             assert len(if_else.nodes) == 1
             return if_else.nodes[0]
 
+        elif isinstance(stmt, While):
+            assert stmt.else_ is None
+            return While(
+                _desugar_expr(stmt.test),
+                Stmt(map(_desugar_stmt, stmt.body)),
+                None
+            )
+
         elif isinstance(stmt, Assign):
             assert len(stmt.nodes) == 1
             node = stmt.nodes[0]

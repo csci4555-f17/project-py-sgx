@@ -93,3 +93,19 @@ class IfStmt(Node):
 
     def __repr__(self):
         return "%s(%s, %s, %s)" % (self.__class__.__name__, repr(self.test), repr(self.then_), repr(self.else_))
+
+
+class WhileStmt(Node):
+    def __init__(self, test_var, test_stmt, body):
+        # type: (Node, Stmt, Stmt) -> ()
+        self.test_var = test_var
+        self.test_stmt = test_stmt
+        self.body = body
+
+    def __repr__(self):
+        return "%s(%s, %s, %s)" % (
+            self.__class__.__name__,
+            repr(self.test_var),
+            repr(self.test_stmt),
+            repr(self.body)
+        )

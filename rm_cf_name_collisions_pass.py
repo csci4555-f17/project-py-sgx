@@ -40,6 +40,11 @@ def rm_cf_name_collisions(i):
         collisionless_if.tag = tag
         return collisionless_if
 
+    elif isinstance(i, while_instr):
+        i.test_instrs = map(rm_cf_name_collisions, i.test_instrs)
+        i.body = map(rm_cf_name_collisions, i.body)
+        return i
+
     else:
         return i
 

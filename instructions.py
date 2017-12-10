@@ -420,3 +420,54 @@ class cmovne(x86instruction):
 
 	def vars_read(self):
 		return self.vars_names(0)
+
+class while_instr(x86instruction):
+	def __init__(self, test_var, test_instrs, body):
+		super(while_instr, self).__init__()
+		self.instr = "while"
+		self.vars = [test_var]
+		self.test_instrs = test_instrs
+		self.body = body
+		self.affected_registers = ["%eax", "%ecx"]  # al, cl
+
+	def assign_locations(self, all_locations):
+		# type: (dict) -> ()
+		super(while_instr, self).assign_locations(all_locations)
+		for instr in self.test_instrs:
+			instr.assign_locations(all_locations)
+		for instr in self.body:
+			instr.assign_locations(all_locations)
+
+	def get_x86(self):
+		# type () -> str
+		start_label = allocate("whilelabel_start", insert_hash=False)
+		end_label = allocate("whilelabel_end", insert_hash=False)
+		x86str = "\n" + start_label + ":\n"
+		for instr in self.test_instrs:
+			x86str += instr.get_x86() + "\n"
+		x86str += "cmpl $0, " + self.var_locations[0] + "\n"
+		x86str += "je " + end_label + "\n"
+		for instr in self.body:
+			x86str += instr.get_x86() + "\n"
+		x86str += "jmp " + start_label + "\n"
+		x86str += end_label + ":\n"
+		return x86str
+
+	def vars_written(self):
+		return self.affected_registers + self.vars_names()
+
+	def vars_read(self):
+		vars_read = []
+		for i in self.test_instrs:
+			vars_read += i.vars_read()
+		return self.vars_names() + vars_read
+
+	def __str__(self):
+		res = super(while_instr, self).__str__() + "\n"
+		for instr in self.test_instrs:
+			res += "|-" + instr.__str__() + "\n"
+		res += "| do\n"
+		for instr in self.body:
+			res += "|-" + instr.__str__() + "\n"
+		res += "|----end" + super(while_instr, self).__str__() + "----|"
+		return res

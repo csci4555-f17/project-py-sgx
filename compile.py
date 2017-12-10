@@ -4,7 +4,7 @@ from libs.termcolor import colored
 
 from compiler.ast import Module, Name, Const
 from flatten import flatten
-from explicate_ast import IfStmt, Eq, NEq, Is, Box, UnBox, GetTag
+from explicate_ast import *
 from desugar import desugar
 from abi import set_abi
 from compiler import parse
@@ -199,6 +199,15 @@ class _ProgramCompiler:
                                           __get_x86IR(stmt.then_.nodes),
                                           __get_x86IR(stmt.else_.nodes))
                                  )
+
+                elif isinstance(stmt, WhileStmt):
+                    x86IR.append(
+                        while_instr(
+                            stmt.test_var,
+                            __get_x86IR(stmt.test_stmt.nodes),
+                            __get_x86IR(stmt.body.nodes)
+                        )
+                    )
                 else:
                     raise NotImplementedError("Not implemented.")
             return x86IR
@@ -225,6 +234,37 @@ class _ProgramCompiler:
                     live_else_ = __get_x86IR_liveness(x86IR[i].else_,
                                                       curr_live.copy())
                     curr_live = live_then_ | live_else_
+
+                elif isinstance(x86IR[i], while_instr):
+                    live_test_var = {x86IR[i].vars[0].name}
+
+                    live_test_instrs = __get_x86IR_liveness(x86IR[i].test_instrs, curr_live.copy())
+                    live_body = __get_x86IR_liveness(x86IR[i].body, curr_live.copy())
+                    curr_live |= live_test_instrs | live_test_var | live_body
+
+                    # do it again with old curr_live + live vars from body and test to propagate circular dependency
+                    live_test_instrs = __get_x86IR_liveness(x86IR[i].test_instrs, curr_live.copy())
+                    live_body = __get_x86IR_liveness(x86IR[i].body, curr_live.copy())
+                    curr_live |= live_test_instrs | live_test_var | live_body
+
+                    # do it again with old curr_live + live vars from body and test to propagate circular dependency
+                    live_test_instrs = __get_x86IR_liveness(x86IR[i].test_instrs, curr_live.copy())
+                    live_body = __get_x86IR_liveness(x86IR[i].body, curr_live.copy())
+                    curr_live |= live_test_instrs | live_test_var | live_body
+
+                    # do it again with old curr_live + live vars from body and test to propagate circular dependency
+                    live_test_instrs = __get_x86IR_liveness(x86IR[i].test_instrs, curr_live.copy())
+                    live_body = __get_x86IR_liveness(x86IR[i].body, curr_live.copy())
+                    curr_live |= live_test_instrs | live_test_var | live_body
+
+                    # do it again with old curr_live + live vars from body and test to propagate circular dependency
+                    live_test_instrs = __get_x86IR_liveness(x86IR[i].test_instrs, curr_live.copy())
+                    live_body = __get_x86IR_liveness(x86IR[i].body, curr_live.copy())
+                    curr_live |= live_test_instrs | live_test_var | live_body
+
+                    x86IR[i].live_vars_after = curr_live
+
+
                 curr_live -= set(x86IR[i].vars_written())
                 curr_live |= set(x86IR[i].vars_read())
             return curr_live
@@ -263,6 +303,9 @@ class _ProgramCompiler:
                 if isinstance(instr, if_instr):
                     if spill(instr.then_) or spill(instr.else_):
                         spilled = True
+                elif isinstance(instr, while_instr):
+                    if spill(instr.body) or spill(instr.test_instrs):
+                        spilled = True
                 if instr.is_mem_to_mem():
                     var = "%ecx"
                     x86IR.insert(i, movl(x86IR[i].vars[0], var))
@@ -279,6 +322,7 @@ class _ProgramCompiler:
         _start_bm("spilling")
         spilled = spill(self.x86IR)
         _end_bm("spilling")
+        _dbg("Graph Coloring", self.interference_graph.nodes.values())
         return False
 
     def _update_padding(self):
@@ -293,7 +337,10 @@ class _ProgramCompiler:
                 if isinstance(instr, if_instr):
                     __update_padding(instr.then_)
                     __update_padding(instr.else_)
-                if isinstance(instr, unpad_args):
+                elif isinstance(instr, while_instr):
+                    __update_padding(instr.body)
+                    __update_padding(instr.test_instrs)
+                elif isinstance(instr, unpad_args):
                     instr.assign_locations(self.vars)
 
         __update_padding(self.x86IR)
@@ -327,9 +374,12 @@ class _ProgramCompiler:
                 elif isinstance(instr, unpad_args):
                     if instr.pad_instr.padding == 0:
                         del x86IR[i]
-                elif isinstance(instr, IfStmt):
+                elif isinstance(instr, if_instr):
                     __rm_nops(instr.then_)
                     __rm_nops(instr.else_)
+                elif isinstance(instr, while_instr):
+                    __rm_nops(instr.test_instrs)
+                    __rm_nops(instr.body)
                 elif isinstance(instr, addl):
                     if instr.vars[0] == Const(0):
                         del x86IR[i]
@@ -364,11 +414,8 @@ class _ProgramCompiler:
         self._get_x86IR_liveness()
         self._build_interference_graph()
         self._allocate_regs()
-        while self._introduce_spill():
-            self._get_x86IR_liveness()
-            self._build_interference_graph()
-            self._allocate_regs()
         _dbg("Graph Coloring", self.interference_graph.nodes.values())
+        self._introduce_spill()
         self._update_padding()
         self._rm_nops()
 

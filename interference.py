@@ -73,6 +73,12 @@ def interference(instructions, g=None):
                 add_edges(t)
             g = interference(i.then_, g)
             g = interference(i.else_, g)
+        elif isinstance(i, while_instr):
+            ts = i.vars_written()
+            for t in ts:
+                add_edges(t)
+            g = interference(i.test_instrs, g)
+            g = interference(i.body, g)
         elif isinstance(i, sete_cl):
             [t] = i.vars_written()
             add_edges(t)

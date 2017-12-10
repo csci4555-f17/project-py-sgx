@@ -62,11 +62,22 @@ def _flatten_stmt(stmt):
 
 	elif isinstance(stmt, IfStmt):
 		flattened_test, test_name = _flatten_expr(stmt.test, True)
+		free(test_name)
 		return flattened_test + [
 			IfStmt(
 				test_name,
 				Stmt(_flatten_stmts(stmt.then_.nodes)),
 				Stmt(_flatten_stmts(stmt.else_.nodes))
+			)
+		]
+
+	elif isinstance(stmt, While):
+		flattened_test, test_atom = _flatten_expr(stmt.test, True)
+		return [
+			WhileStmt(
+				test_atom,
+				Stmt(flattened_test),
+				Stmt(_flatten_stmts(stmt.body))
 			)
 		]
 
