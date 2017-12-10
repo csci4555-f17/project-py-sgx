@@ -11,9 +11,11 @@ from compiler import parse
 from instructions import *
 from interference import interference
 from rm_cf_name_collisions_pass import rm_cf_name_collisions
+from if_to_cmov_pass import if_to_cmov
 from graph import Uncolorable
 from allocator import allocate
 from benchmark import BenchMark
+from utils import flat_map
 
 
 DEBUG = False
@@ -203,11 +205,12 @@ class _ProgramCompiler:
         self.x86IR = __get_x86IR(self.flat_ast.node.nodes)
         return
 
-    def _rm_cf_name_collisions(self):
+    def _if_to_cmov(self):
         if CONSTANT_TIME:
-            self.x86IR = map(rm_cf_name_collisions, self.x86IR)
-            # _dbg("Uncollided IR: ", str(self.x86IR))
-            print "Uncollided IR: ", self.x86IR
+            uncollided = map(rm_cf_name_collisions, self.x86IR)
+            _dbg("Uncollided IR: ", uncollided)
+            self.x86IR = flat_map(if_to_cmov, uncollided)
+            _dbg("Constant IR: ", "\n".join(map(str, self.x86IR)))
 
     def _get_x86IR_liveness(self):
         def __get_x86IR_liveness(x86IR, curr_live):
@@ -351,7 +354,7 @@ class _ProgramCompiler:
     def compile(self):
         # type: () -> str
         self._get_x86IR()
-        self._rm_cf_name_collisions()
+        self._if_to_cmov()
         self._get_x86IR_liveness()
         self._build_interference_graph()
         self._allocate_regs()

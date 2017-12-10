@@ -115,8 +115,8 @@ def _desugar_expr(expr):
         # Desugar to if-expression since it short circuits
         return IfExp(
             not_expr,
-            Const(False),
-            Const(True)
+            Const(0),
+            Const(1)
         )
 
     elif isinstance(expr, Or):
@@ -169,9 +169,9 @@ def _desugar_expr(expr):
 
     elif isinstance(expr, Name):
         if expr.name == "True":
-            return Const(True)
+            return Const(1)
         elif expr.name == "False":
-            return Const(False)
+            return Const(0)
         else:
             return expr
 

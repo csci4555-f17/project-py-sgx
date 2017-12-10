@@ -45,9 +45,9 @@ class x86instruction(object):
 			sstr += " " + self.vars[i].__repr__()
 			if i < len(self.var_locations):
 				sstr += "(" + self.var_locations[i] + ")"
-		if len(self.affected_registers) > 0:
-			sstr += " {affects" + self.affected_registers.__str__() + "}"
-		sstr += " {live: " + ", ".join(self.live_vars_after) + "}"
+		# if len(self.affected_registers) > 0:
+		# 	sstr += " {affects" + self.affected_registers.__str__() + "}"
+		# sstr += " {live: " + ", ".join(self.live_vars_after) + "}"
 		return sstr
 
 	def __repr__(self):
@@ -391,10 +391,22 @@ class movzbl_cl(x86instruction):
 	def vars_read(self):
 		return []
 
-class cmoveq(x86instruction):
+class cmove(x86instruction):
 	def __init__(self, left, right):
-		super(cmoveq, self).__init__()
+		super(cmove, self).__init__()
 		self.instr = "cmove"
+		self.vars = [left, right]
+
+	def vars_written(self):
+		return self.vars_names(1)
+
+	def vars_read(self):
+		return self.vars_names(0)
+
+class cmovne(x86instruction):
+	def __init__(self, left, right):
+		super(cmovne, self).__init__()
+		self.instr = "cmovne"
 		self.vars = [left, right]
 
 	def vars_written(self):
