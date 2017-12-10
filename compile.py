@@ -21,6 +21,7 @@ from utils import flat_map
 DEBUG = False
 BENCH = False
 CONSTANT_TIME = True
+BENCH_BINARY = True
 
 
 def _dbg(title, msg=""):
@@ -203,6 +204,8 @@ class _ProgramCompiler:
             return x86IR
 
         self.x86IR = __get_x86IR(self.flat_ast.node.nodes)
+        if BENCH_BINARY:
+            self.x86IR = self.x86IR
         return
 
     def _if_to_cmov(self):
@@ -253,27 +256,30 @@ class _ProgramCompiler:
     def _introduce_spill(self):
         def spill(x86IR):
             spilled = False
-            skip_next = False
-            for i in range(len(x86IR)):
+            len_x86IR = len(x86IR)
+            i = 0
+            while i < len_x86IR:
                 instr = x86IR[i]
-                if skip_next:
-                    skip_next = False
-                    continue
                 if isinstance(instr, if_instr):
                     if spill(instr.then_) or spill(instr.else_):
                         spilled = True
                 if instr.is_mem_to_mem():
-                    var = allocate()
-                    x86IR.insert(i, unspillableMovl(x86IR[i].vars[0], var))
+                    var = "%ecx"
+                    x86IR.insert(i, movl(x86IR[i].vars[0], var))
+                    x86IR[i].var_locations = x86IR[i + 1].var_locations[:]
+                    x86IR[i].var_locations[1] = var
                     x86IR[i + 1].vars[0] = var
+                    x86IR[i + 1].var_locations[0] = var
                     spilled = True
-                    skip_next = True
+                    i += 1
+                    len_x86IR += 1
+                i += 1
             return spilled
 
         _start_bm("spilling")
         spilled = spill(self.x86IR)
         _end_bm("spilling")
-        return spilled
+        return False
 
     def _update_padding(self):
         def __update_padding(x86IR):
@@ -358,10 +364,7 @@ class _ProgramCompiler:
         self._get_x86IR_liveness()
         self._build_interference_graph()
         self._allocate_regs()
-        while self._introduce_spill():
-            self._get_x86IR_liveness()
-            self._build_interference_graph()
-            self._allocate_regs()
+        self._introduce_spill()
         _dbg("Graph Coloring", self.interference_graph.nodes.values())
         self._update_padding()
         self._rm_nops()

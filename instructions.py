@@ -17,6 +17,8 @@ callee_save_regs = {
 regs = caller_save_regs | callee_save_regs
 
 reserved_regs = {
+	"%ebx",
+	"%ecx",
 	"%esp",
 	"%ebp"
 }
@@ -119,6 +121,12 @@ class movl(x86instruction):
 
 	def vars_read(self):
 		return self.vars_names(0)
+
+class cmove(movl):
+	def __init__(self, left_var, right_var):
+		super(movl, self).__init__()
+		self.instr = "cmove"
+		self.vars = [left_var, right_var]
 
 class unspillableMovl(movl):
 	def __str__(self):
