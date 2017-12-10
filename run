@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-./pyyc --bench --debug --constant-time $1.py &&
+./pyyc --bench --constant-time $1.py &&
 make -C runtime
 gcc -m32 -lm $1.s runtime/libpyyruntime.a -o $1 &&
 echo &&
