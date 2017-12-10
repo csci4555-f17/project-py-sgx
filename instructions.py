@@ -440,8 +440,8 @@ class while_instr(x86instruction):
 
 	def get_x86(self):
 		# type () -> str
-		start_label = allocate("whilelabel_start", insert_hash=False)
-		end_label = allocate("whilelabel_end", insert_hash=False)
+		start_label = allocate().name
+		end_label = allocate().name
 		x86str = "\n" + start_label + ":\n"
 		for instr in self.test_instrs:
 			x86str += instr.get_x86() + "\n"

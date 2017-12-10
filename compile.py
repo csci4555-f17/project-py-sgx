@@ -4,7 +4,7 @@ from libs.termcolor import colored
 
 from compiler.ast import Module, Name, Const
 from flatten import flatten
-from explicate_ast import *
+from explicate_ast import IfStmt, Eq, NEq, WhileStmt
 from desugar import desugar
 from abi import set_abi
 from compiler import parse
@@ -134,36 +134,6 @@ class _ProgramCompiler:
             x86IR.append(setne_cl())
             if target is not None:
                 x86IR.append(movzbl_cl(target))
-        elif isinstance(expr, Is):
-            x86IR.append(cmpl(expr.left, expr.right))
-            x86IR.append(sete_cl())
-            if target is not None:
-                x86IR.append(movzbl_cl(target))
-        elif isinstance(expr, GetTag):
-            if target is not None:
-                x86IR.append(movl(expr.arg, target))
-                x86IR.append(andl("$3", target))
-        elif isinstance(expr, Box):
-            if target is not None:
-                x86IR.append(movl(expr.arg, target))
-                if expr.type == "int":
-                    x86IR.append(sall("$2", target))
-                elif expr.type == "bool":
-                    x86IR.append(sall("$2", target))
-                    x86IR.append(orl("$1", target))
-                elif expr.type == "big":
-                    x86IR.append(orl("$3", target))
-                else:
-                    raise TypeError(expr.type)
-        elif isinstance(expr, UnBox):
-            if target is not None:
-                x86IR.append(movl(expr.arg, target))
-                if expr.type == "small":
-                    x86IR.append(sarl("$2", target))
-                elif expr.type == "big":
-                    x86IR.append(andl("$0xfffffffc", target))
-                else:
-                    raise TypeError(expr.type)
         else:
             raise TypeError(expr)
         return x86IR
