@@ -4,7 +4,7 @@ from utils import union, keys_to_dict
 import copy
 
 
-IFS = 0
+IF_LEVEL = 0
 
 
 # Remove name collisions resulting from different control flow paths being
@@ -15,15 +15,15 @@ def rm_cf_name_collisions(i):
         # type: ({str}, {str}) -> ({str: Name}, {str: Name})
         # creates dictionaries of renamings
         def thenify(name):
-            return Name("if#%d_then_" % IFS + name)
+            return Name("if#%d_then_" % IF_LEVEL + name)
         def elsify(name):
-            return Name("if#%d_else_" % IFS + name)
+            return Name("if#%d_else_" % IF_LEVEL + name)
         return keys_to_dict(written_in_then, thenify), keys_to_dict(written_in_else, elsify)
 
     if isinstance(i, if_instr):
-        global IFS
-        IFS += 1
-        tag = IFS
+        global IF_LEVEL
+        IF_LEVEL += 1
+        tag = IF_LEVEL
         then_vars_written = union(map(vars_written, i.then_))
         else_vars_written = union(map(vars_written, i.else_))
         then_renamings, else_renamings = renamings(then_vars_written, else_vars_written)
@@ -38,6 +38,7 @@ def rm_cf_name_collisions(i):
         collisionless_if.then_renamings = then_renamings
         collisionless_if.else_renamings = else_renamings
         collisionless_if.tag = tag
+        IF_LEVEL -= 1
         return collisionless_if
 
     elif isinstance(i, while_instr):

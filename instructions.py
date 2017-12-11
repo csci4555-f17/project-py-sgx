@@ -17,6 +17,8 @@ callee_save_regs = {
 regs = caller_save_regs | callee_save_regs
 
 reserved_regs = {
+	"%ebx",
+	"%ecx",
 	"%esp",
 	"%ebp"
 }

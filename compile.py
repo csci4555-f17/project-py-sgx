@@ -279,10 +279,10 @@ class _ProgramCompiler:
                 if instr.is_mem_to_mem():
                     var = "%ecx"
                     x86IR.insert(i, movl(x86IR[i].vars[0], var))
-                    x86IR[i].var_locations = x86IR[i + 1].var_locations
+                    x86IR[i].var_locations = x86IR[i + 1].var_locations[:]
                     x86IR[i].var_locations[1] = var
                     x86IR[i + 1].vars[0] = var
-                    x86IR[i + 1].var_locations[1] = var
+                    x86IR[i + 1].var_locations[0] = var
                     spilled = True
                     i += 1
                     len_x86IR += 1
