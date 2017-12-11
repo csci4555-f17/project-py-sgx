@@ -263,7 +263,7 @@ class if_instr(x86instruction):
 			x86str += "movl $" + then_label + ", %ebx\n"
 			x86str += "movl $" + else_label + ", %ecx\n"
 			x86str += "cmp $0, " + self.var_locations[0] + "\n"
-			#x86str += "cmove $" + else_label + ", %ebx\n"
+			# x86str += "cmove $" + else_label + ", %ebx\n"
 			x86str += "cmove %ecx, %ebx\n"
 			x86str += startj_label + ":\njmp " + trampoline_to_thenj + "\n"
 			x86str += then_label + ":\n"
@@ -440,17 +440,70 @@ class while_instr(x86instruction):
 
 	def get_x86(self):
 		# type () -> str
-		start_label = allocate().name
-		end_label = allocate().name
-		x86str = "\n" + start_label + ":\n"
-		for instr in self.test_instrs:
-			x86str += instr.get_x86() + "\n"
-		x86str += "cmpl $0, " + self.var_locations[0] + "\n"
-		x86str += "je " + end_label + "\n"
-		for instr in self.body:
-			x86str += instr.get_x86() + "\n"
-		x86str += "jmp " + start_label + "\n"
-		x86str += end_label + ":\n"
+		if ZIGZAG:
+			"""
+			test_label:
+				TEST_CODE
+				mov body_label, %ebx
+				cmpl $0, test_var
+				cmove end_label, %ebx
+				jmp zz1                    zz1:
+			body_label:                        jmp body.j
+				BODY_CODE
+				mov test_label, %ebx
+			body_label.j:
+				jmp zz2                    zz2:
+			end_label:                         jmp %ebx
+			"""
+			test_label = "test_label_" + allocate().name
+			body_name = allocate().name
+			body_label = "body_label_" + body_name
+			body_label_j = "body_label_j_" + body_name
+			end_label = "end_label_" + allocate().name
+			zz1_label = "zz1_" + allocate().name
+			zz2_label = "zz2_" + allocate().name
+
+			x86str = "jmp " + test_label + "\n"
+
+			# Trampoline
+			x86str += zz1_label + ":\n"
+			x86str += "jmp " + body_label_j + "\n"
+
+			x86str += zz2_label + ":\n"
+			x86str += "jmp *%ebx\n"
+
+			# Loop
+			x86str += test_label + ":\n"
+			for instr in self.test_instrs:
+				x86str += instr.get_x86() + "\n"
+			x86str += "movl $" + body_label + ", %ebx\n"
+			x86str += "movl $" + end_label + ", %ecx\n"
+			x86str += "cmpl $0, " + self.var_locations[0] + "\n"
+			x86str += "cmove %ecx, %ebx\n"
+			x86str += "jmp " + zz1_label + "\n"
+
+			x86str += body_label + ":\n"
+			for instr in self.body:
+				x86str += instr.get_x86() + "\n"
+			x86str += "movl $" + test_label + ", %ebx\n"
+
+			x86str += body_label_j + ":\n"
+			x86str += "jmp " + zz2_label + "\n"
+
+			x86str += end_label + ":\n"
+
+		else:
+			start_label = allocate().name
+			end_label = allocate().name
+			x86str = "\n" + start_label + ":\n"
+			for instr in self.test_instrs:
+				x86str += instr.get_x86() + "\n"
+			x86str += "cmpl $0, " + self.var_locations[0] + "\n"
+			x86str += "je " + end_label + "\n"
+			for instr in self.body:
+				x86str += instr.get_x86() + "\n"
+			x86str += "jmp " + start_label + "\n"
+			x86str += end_label + ":\n"
 		return x86str
 
 	def vars_written(self):

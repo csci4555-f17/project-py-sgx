@@ -20,10 +20,11 @@
 # print var1
 x = 10
 while x:
-    print x
+    # print x
+    # if x:
+    #     y = 2
+    y = 5
+    while y:
+        print y + x
+        y = y + -1
     x = x + -1
-    y = 2
-    if not (x + -4):
-        print x
-    else:
-        print 987
