@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <string.h>
+#include <time.h>
 
 #include "runtime.h"
 
@@ -14,6 +15,44 @@ static void print_float(double in);
 static void print_list(pyobj pyobj_list);
 static void print_dict(pyobj dict);
 static list list_add(list x, list y);
+
+/* OUR STUFF */
+struct timespec ts_begin;
+
+/*
+unsigned long __inline__ rdtscp() {
+  unsigned a, d, c;
+  // based on https://software.intel.com/en-us/forums/intel-isa-extensions/topic/280440
+  __asm__ volatile("rdtscp" : "=a" (a), "=d" (d), "=c" (c));
+  return ((unsigned long)a) | (((unsigned long)d) << 32);
+}*/
+
+// Saves current nanotime in
+void _nanotime_begin() {
+  clock_gettime(CLOCK_MONOTONIC, &ts_begin);
+}
+
+long __timespec_diff(const struct timespec *end, const struct timespec *start) {
+  long end_ns = (long) end->tv_sec * 1000000000 + (long) end->tv_nsec;
+  long start_ns = (long) start->tv_sec * 1000000000 + (long) start->tv_nsec;
+  return end_ns - start_ns;
+}
+
+void _print_nanotime_diff() {
+  struct timespec ts2;
+  clock_gettime(CLOCK_MONOTONIC, &ts2);
+  printf("nanoseconds: %ld\n", __timespec_diff(&ts2, &ts_begin));
+}
+
+void _rand_seed_time() {
+  srand(time(NULL));
+}
+
+int _rand_zero_or_one() {
+  return rand() % 2;
+}
+
+
 
 int tag(pyobj val) {
   return val & MASK;
