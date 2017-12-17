@@ -1,8 +1,13 @@
-# Compiler Construction Labs
+# Compiling python to a side-channel protected binary
 
-This repository is for the lab projects in CSCI 4555/5525 and ECEN 4553/5523 Compiler Construction at the University of Colorado Boulder.
+There are numerous side-channel based attacks on protections, guaranteed by Intel SGX trusted execution. Prior research has shown that side-channels may enable a local attacker to extract information from the secure enclave. We address issues with cache, timing, and branch shadowing through a combination of known and brand new techniques to compile Python to a protected binary. We show that proposed protections efficiently eliminate side-channels.
 
-As an advanced course, these labs are designed to be open ended with a significant flexibility for your design. There is a minimal amount of starter files in this repository: a minimal run-time system for your programs, a wrapper script for your compiler `pyyc`, and a `Makefile` for your convenience.
+- [Proposal](proposal.md)
+- [Status Update](status-update.md)
+- [Presentation](presentation.pdf)
+- [Paper](paper/paper.pdf)
+
+There is a minimal amount of starter files in this repository: a minimal run-time system for your programs, a wrapper script for your compiler `pyyc`, and a `Makefile` for your convenience.
 
 Your compiler should take one argument for the name of the input Python `.py` file to compile, and it should produce an output x86 assembly file with the same name as the input file except that the `.py` suffix has been replaced by the `.s` suffix.
 
