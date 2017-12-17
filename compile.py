@@ -384,6 +384,7 @@ class _ProgramCompiler:
         self._get_x86IR_liveness()
         self._build_interference_graph()
         self._allocate_regs()
+        _dbg("Graph Coloring", self.interference_graph.nodes.values())
         self._introduce_spill()
         self._update_padding()
         self._rm_nops()
