@@ -105,7 +105,7 @@ A proper understanding of our side-channel protections requires knowledge of cor
 
 \textbf{Cache attack.}~\cite{osvik2006cache} To carry out this attack, the adversary fills the cache with random data, then lets the enclave continue execution. After the secure enclave executes a target branch, an attacker would interrupt the enclave. Now, the attacker is able to probe the cache, by accessing the same random data and measuring the time it took to fetch it. Form this, they can determine which cache lines were evicted by the enclave. Since the cache line used depends on the memory address accessed, which varies based on the variables used in different branches, the attacker may infer which branch was taken in the enclave.
 
-\textbf{Branch shadowing attack.}~\cite{lee2016inferring} This attack allows local attacker to determine whether an enclave branch at a certain address, e.g. \texttt{0x0000422410}, was taken by crafting a ``shadowed'' out-of-enclave branch at e.g. \texttt{0xffff422410}, which shares lower 31 bits of the address. Since only those last bits are used to locate an entry in the Branch Target Buffer table, the enclave branch will collide with out-of-enclave branch. After the attacker executes the out-of-enclave branch, they'd be able to check the LBR (Last Branch Record, a history of each branch and whether or not it was mispredicted) to see whether the out-of-enclave was mispredicted and learn whether the corresponding branch was taken in the enclave.
+\textbf{Branch shadowing attack.}~\cite{lee2016inferring} Branch shadowing allows local attacker to determine whether an enclave branch at a certain address, e.g. \texttt{0x0000422410}, was taken by crafting a ``shadowed'' out-of-enclave branch at any address, with same lower 31 bits at the end, e.g. \texttt{0xffff422410}. Since only those last bits are used to locate an entry in the Branch Target Buffer table, the enclave branch will collide with out-of-enclave branch. After the attacker executes the out-of-enclave branch, they'd be able to check the LBR (Last Branch Record, a history of each branch and whether or not it was mispredicted) to see whether the out-of-enclave was mispredicted and learn whether the corresponding branch was taken in the enclave.
 
 \textbf{Attack on memory access patterns.} The operating system has access to encrypted RAM, and so may be able to derive memory access patterns from page faults. Suppose the enclave accesses a certain index of an . Despite the fact that the RAM used by the enclave is encrypted, the operating system still has knowlege of what memory was accesses through page faults, and with this may be able to infer the index of an array the enclave tries to access. This will be problematic, since the index may be precisely the data an application wants to hide. This was the case in private contact discovery for Signal messenger~\cite{signalprivaterecovery}. This attack is not solved in this project and left for future work.
 
@@ -140,7 +140,7 @@ expr            \ ::=&\ expr\ \text{``\texttt{if}''}\ expr\ \text{``\texttt{else
 \end{align*}
 
 \begingroup\vspace*{-\baselineskip}
-\captionof{figure}{The subset of Python implemented in our prototype compiler. Notice the distinction between simple and effect statements, and the type used in a suite.}
+\captionof{figure}{The subset of Python implemented as part of this project. Notice the distinction between simple and effect statements, and the type used in a suite.}
 \vspace*{\baselineskip}\endgroup
 % \lipsum*[2]
 
@@ -153,7 +153,7 @@ Using the Zigzagger mitigation, we perform a transformation on while loops, depi
 
 \begin{figure}[bhp]
 \includegraphics[width=\columnwidth]{./while_zigzagger.png}
-\caption{The transformation applied by our compiler on while loops, based on the mitigation on if statements in Lee, Sangho, et al.}
+\caption{The transformation applied by our compiler on while loops, inspired by mitigation of if statements by Lee, Sangho, et al.}
 \label{fig:while_zigzagger}
 \end{figure}
 
@@ -182,7 +182,7 @@ The fundamental problem of selectively executing instructions still exists in Zi
 
 \begin{figure}[bhp]
 \includegraphics[width=\columnwidth]{cmov_if_transofrmation.png}
-\caption{An example of applying our constant time transformation on the Python program in ``Original Code''. Conditional moves are represented by the following pseudo code: \texttt{if (test) dest = src}.}
+\caption{An example of constant time transformation of the Python program in ``Original Code''. Conditional moves are represented as a following pseudo code: \texttt{if (test) dest = src}.}
 \label{fig:cmov_if_transofrmation}
 \end{figure}
 
